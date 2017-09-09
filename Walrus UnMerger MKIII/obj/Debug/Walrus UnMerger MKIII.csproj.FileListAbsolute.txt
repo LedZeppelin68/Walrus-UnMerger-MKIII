@@ -1,0 +1,6 @@
+c:\users\андрей\documents\visual studio 2017\Projects\Walrus UnMerger MKIII\Walrus UnMerger MKIII\bin\Debug\Walrus UnMerger MKIII.exe.config
+c:\users\андрей\documents\visual studio 2017\Projects\Walrus UnMerger MKIII\Walrus UnMerger MKIII\bin\Debug\Walrus UnMerger MKIII.exe
+c:\users\андрей\documents\visual studio 2017\Projects\Walrus UnMerger MKIII\Walrus UnMerger MKIII\bin\Debug\Walrus UnMerger MKIII.pdb
+c:\users\андрей\documents\visual studio 2017\Projects\Walrus UnMerger MKIII\Walrus UnMerger MKIII\obj\Debug\Walrus UnMerger MKIII.csprojResolveAssemblyReference.cache
+c:\users\андрей\documents\visual studio 2017\Projects\Walrus UnMerger MKIII\Walrus UnMerger MKIII\obj\Debug\Walrus UnMerger MKIII.exe
+c:\users\андрей\documents\visual studio 2017\Projects\Walrus UnMerger MKIII\Walrus UnMerger MKIII\obj\Debug\Walrus UnMerger MKIII.pdb
