@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Xml;
 
 namespace Walrus_UnMerger_MKIII
 {
@@ -11,11 +12,33 @@ namespace Walrus_UnMerger_MKIII
     {
         internal static byte[] sync = { 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00 };
 
-        internal static void UnMerge(string type, long map_offset, long map_length, Dictionary<string, BinaryReader> readers, BinaryWriter FileWriter)
+        internal static void UnMerge(XmlNode single_file_xml, Dictionary<string, BinaryReader> readers, BinaryWriter FileWriter)
         {
+            string type = single_file_xml.Attributes["type"].Value;
+
+            long map_offset = Convert.ToInt64(single_file_xml.Attributes["map_offset"].Value);
+            long map_length = Convert.ToInt64(single_file_xml.Attributes["map_size"].Value);
+            long end_point = map_offset + map_length;
+            UInt32 block_offset = 0;
+
             switch (type)
             {
                 case "iso":
+                    readers["map"].BaseStream.Seek(map_offset, SeekOrigin.Begin);
+
+                    while (readers["map"].BaseStream.Position != end_point)
+                    {
+                        byte[] iso_temp = new byte[2048];
+                        block_offset = readers["map"].ReadUInt32();
+
+                        if(block_offset != 0xffffffffu)
+                        {
+                            readers["2048"].BaseStream.Seek(block_offset * 2048, SeekOrigin.Begin);
+                            iso_temp = readers["2048"].ReadBytes(2048);
+                        }
+
+                        FileWriter.Write(iso_temp);
+                    }
                     break;
                 case "raw":
 
@@ -27,7 +50,7 @@ namespace Walrus_UnMerger_MKIII
 
                     readers["map"].BaseStream.Seek(map_offset, SeekOrigin.Begin);
 
-                    long end_point = map_offset + map_length;
+                    //long end_point = map_offset + map_length;
                     int sector_number = 150;
 
                     while (readers["map"].BaseStream.Position != end_point)
@@ -44,7 +67,7 @@ namespace Walrus_UnMerger_MKIII
                             case 2:
                                 byte[] temp = new byte[2352];
                                 byte[] subheader = readers["map"].ReadBytes(8);
-                                UInt32 block_offset = readers["map"].ReadUInt32();
+                                block_offset = readers["map"].ReadUInt32();
 
                                 byte[] msf = GetMSF(sector_number);
 
@@ -99,6 +122,27 @@ namespace Walrus_UnMerger_MKIII
 
                     break;
                 case "file":
+                    long even_block_count = Convert.ToInt64(single_file_xml.Attributes["size"].Value) / 2048;
+                    long last_block_count = Convert.ToInt64(single_file_xml.Attributes["size"].Value) % 2048;
+
+                    //long block_offset = 0;
+
+                    for (int i = 0; i < even_block_count; i++)
+                    {
+                        byte[] even_temp = new byte[2048];
+                        block_offset = readers["map"].ReadUInt32();
+                        if (block_offset != 0xffffffffu)
+                        {
+                            readers["2048"].BaseStream.Seek(block_offset * 2048, SeekOrigin.Begin);
+                            even_temp = readers["2048"].ReadBytes(2048);
+                        }
+                        FileWriter.Write(even_temp);
+                    }
+
+                    readers["2048"].BaseStream.Seek(readers["map"].ReadUInt32() * 2048, SeekOrigin.Begin);
+                    byte[] last_temp = readers["2048"].ReadBytes((Int32)last_block_count);
+                    FileWriter.Write(last_temp);
+
                     break;
             }
 

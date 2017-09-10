@@ -59,14 +59,11 @@ namespace Walrus_UnMerger_MKIII
                 {
                     string filename = single_file_xml.Attributes["name"].Value;
                     string fila_md5 = single_file_xml.Attributes["md5"].Value;
-                    string type = single_file_xml.Attributes["type"].Value;
-
-                    long map_offset = Convert.ToInt64(single_file_xml.Attributes["map_offset"].Value);
-                    long map_length = Convert.ToInt64(single_file_xml.Attributes["map_size"].Value);
+                    
 
                     using (BinaryWriter FileWriter = new BinaryWriter(new FileStream(Path.Combine(WorkingDirectory, filename), FileMode.Create)))
                     {
-                        UnMergeRoutines.UnMerge(type, map_offset, map_length, Readers, FileWriter);
+                        UnMergeRoutines.UnMerge(single_file_xml, Readers, FileWriter);
                     }
                 }
             }
