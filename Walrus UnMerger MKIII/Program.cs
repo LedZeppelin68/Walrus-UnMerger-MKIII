@@ -12,7 +12,7 @@ namespace Walrus_UnMerger_MKIII
     {
         static void Main(string[] args)
         {
-            //args = new string[] { @"K:\zeptrades\Tales of Destiny\Tales of Destiny.xml" };
+            //args = new string[] { @"C:\Usenet\temp\3D Lemmings (USA)\3D Lemmings (USA).xml" };
 
             foreach (string file_xml in args)
             {

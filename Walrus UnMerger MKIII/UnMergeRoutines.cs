@@ -16,6 +16,7 @@ namespace Walrus_UnMerger_MKIII
         {
             string type = single_file_xml.Attributes["type"].Value;
 
+            long file_length = Convert.ToInt64(single_file_xml.Attributes["size"].Value);
             long map_offset = Convert.ToInt64(single_file_xml.Attributes["map_offset"].Value);
             long map_length = Convert.ToInt64(single_file_xml.Attributes["map_size"].Value);
             long end_point = map_offset + map_length;
@@ -50,8 +51,8 @@ namespace Walrus_UnMerger_MKIII
 
                     readers["map"].BaseStream.Seek(map_offset, SeekOrigin.Begin);
 
-                    //long end_point = map_offset + map_length;
                     int sector_number = 150;
+                    byte[] msf = new byte[3];
 
                     while (readers["map"].BaseStream.Position != end_point)
                     {
@@ -61,15 +62,85 @@ namespace Walrus_UnMerger_MKIII
 
                         switch (mode)
                         {
-                            case 1:
+                            case 0:
+                                byte null_flag = (byte)(control & 0x80);
+                                byte last_flag = (byte)(control & 0x40);
+                                switch (null_flag)
+                                {
+                                    default:
+                                        int block_size = 2352;
+                                        switch (last_flag)
+                                        {
+                                            case 0x40:
+                                                block_size = readers["map"].ReadInt16();
+                                                break;
+                                        }
+                                        block_offset = readers["map"].ReadUInt32();
+                                        readers["pcm"].BaseStream.Seek(44 + (block_offset * 2352), SeekOrigin.Begin);
+                                        byte[] audio = readers["pcm"].ReadBytes(block_size);
+                                        FileWriter.Write(audio);
 
+                                        //switch (file_length > 2352)
+                                        //{
+                                        //    case true:
+                                        //        block_offset = readers["map"].ReadUInt32();
+                                        //        readers["pcm"].BaseStream.Seek(44 + (block_offset * 2352), SeekOrigin.Begin);
+                                        //        byte[] audio = readers["pcm"].ReadBytes(2352);
+                                        //        FileWriter.Write(audio);
+                                        //        file_length -= 2352;
+                                        //        if(file_length < 100000)
+                                        //        {
+                                        //            int y = 0;
+                                        //        }
+                                        //        break;
+                                        //    case false:
+                                        //        block_offset = readers["map"].ReadUInt32();
+                                        //        readers["pcm"].BaseStream.Seek(44 + (block_offset * 2352), SeekOrigin.Begin);
+                                        //        byte[] audio_last = readers["pcm"].ReadBytes((int)file_length);
+                                        //        FileWriter.Write(audio_last);
+                                        //        break;
+                                        //}
+                                        break;
+                                    case 0x80:
+                                        UInt32 null_samples = readers["map"].ReadUInt32();
+                                        for (int x = 0; x < null_samples; x++)
+                                        {
+                                            FileWriter.Write(new byte[4]);
+                                        }
+                                        file_length -= null_samples * 4;
+                                        break;
+                                }
+                                break;
+                            case 1:
+                                byte[] mode1 = new byte[2352];
+                                block_offset = readers["map"].ReadUInt32();
+                                //block_offset = block_offset * 2048;
+                                readers["2048"].BaseStream.Seek(block_offset * 2048, SeekOrigin.Begin);
+
+                                byte[] datamode1 = readers["2048"].ReadBytes(2048);
+
+                                msf = GetMSF(sector_number);
+                                InsertChunk(ref mode1, ref sync, 0);
+                                InsertChunk(ref mode1, ref msf, 12);
+                                mode1[15] = 1;
+                                InsertChunk(ref mode1, ref datamode1, 16);
+
+                                calculate_edc(ref mode1, 1, ref edc_lut);
+                                calculate_eccp(ref mode1, ref ecc_f_lut, ref ecc_b_lut);
+                                calculate_eccq(ref mode1, ref ecc_f_lut, ref ecc_b_lut);
+
+                                FileWriter.Write(mode1);
+                                sector_number++;
                                 break;
                             case 2:
+                                int ecc_error = control & 0x80;
+                                int null_edc = control & 0x40;
+
                                 byte[] temp = new byte[2352];
                                 byte[] subheader = readers["map"].ReadBytes(8);
                                 block_offset = readers["map"].ReadUInt32();
 
-                                byte[] msf = GetMSF(sector_number);
+                                msf = GetMSF(sector_number);
 
                                 InsertChunk(ref temp, ref sync, 0);
                                 
@@ -102,18 +173,33 @@ namespace Walrus_UnMerger_MKIII
                                 switch (subheader[2] & 0x20)
                                 {
                                     default:
-                                        calculate_edc(ref temp, 21, ref edc_lut);
-                                        calculate_eccp(ref temp, ref ecc_f_lut, ref ecc_b_lut);
-                                        calculate_eccq(ref temp, ref ecc_f_lut, ref ecc_b_lut);
-                                        InsertChunk(ref temp, ref msf, 12);
+                                        if (ecc_error != 0x80)
+                                        {
+                                            calculate_edc(ref temp, 21, ref edc_lut);
+                                            calculate_eccp(ref temp, ref ecc_f_lut, ref ecc_b_lut);
+                                            calculate_eccq(ref temp, ref ecc_f_lut, ref ecc_b_lut);
+                                            InsertChunk(ref temp, ref msf, 12);
+                                            temp[15] = 2;
+                                        }
+                                        else
+                                        {
+                                            InsertChunk(ref temp, ref msf, 12);
+                                            temp[15] = 2;
+                                            calculate_edc(ref temp, 21, ref edc_lut);
+                                            calculate_eccp(ref temp, ref ecc_f_lut, ref ecc_b_lut);
+                                            calculate_eccq(ref temp, ref ecc_f_lut, ref ecc_b_lut);
+                                        }
                                         break;
                                     case 0x020:
-                                        calculate_edc(ref temp, 22, ref edc_lut);
+                                        if (null_edc != 0x40)
+                                        {
+                                            calculate_edc(ref temp, 22, ref edc_lut);
+                                        }
                                         InsertChunk(ref temp, ref msf, 12);
+                                        temp[15] = 2;
                                         break;
                                 }
 
-                                temp[15] = 2;
                                 FileWriter.Write(temp);
                                 sector_number++;
                                 break;
@@ -126,6 +212,7 @@ namespace Walrus_UnMerger_MKIII
                     long last_block_count = Convert.ToInt64(single_file_xml.Attributes["size"].Value) % 2048;
 
                     //long block_offset = 0;
+                    readers["map"].BaseStream.Seek(map_offset, SeekOrigin.Begin);
 
                     for (int i = 0; i < even_block_count; i++)
                     {
