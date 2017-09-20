@@ -51,7 +51,7 @@ namespace Walrus_UnMerger_MKIII
 
                     readers["map"].BaseStream.Seek(map_offset, SeekOrigin.Begin);
 
-                    int sector_number = 150;
+                    int sector_number = 0;
                     byte[] msf = new byte[3];
 
                     while (readers["map"].BaseStream.Position != end_point)
@@ -59,6 +59,9 @@ namespace Walrus_UnMerger_MKIII
                         byte control = readers["map"].ReadByte();
 
                         int mode = control & 3;
+                        //byte null_flag = (byte)(control & 0x80);
+                        //byte last_flag = (byte)(control & 0x40);
+                        byte msf_correction = 0;
 
                         switch (mode)
                         {
@@ -112,7 +115,9 @@ namespace Walrus_UnMerger_MKIII
                                 }
                                 break;
                             case 1:
+                                msf_correction = (byte)(control & 0x20);
                                 byte[] mode1 = new byte[2352];
+                                if (msf_correction != 0) sector_number = readers["map"].ReadInt32();
                                 block_offset = readers["map"].ReadUInt32();
                                 //block_offset = block_offset * 2048;
                                 readers["2048"].BaseStream.Seek(block_offset * 2048, SeekOrigin.Begin);
@@ -135,7 +140,8 @@ namespace Walrus_UnMerger_MKIII
                             case 2:
                                 int ecc_error = control & 0x80;
                                 int null_edc = control & 0x40;
-
+                                msf_correction = (byte)(control & 0x20);
+                                if (msf_correction != 0) sector_number = readers["map"].ReadInt32();
                                 byte[] temp = new byte[2352];
                                 byte[] subheader = readers["map"].ReadBytes(8);
                                 block_offset = readers["map"].ReadUInt32();
@@ -359,7 +365,12 @@ namespace Walrus_UnMerger_MKIII
             0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79,
             0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
             0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99,
-            0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9
+            0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9,
+            0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9,
+            0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9,
+            0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9,
+            0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9,
+            0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9
         };
 
         private static byte[] GetMSF(int sector_number)
